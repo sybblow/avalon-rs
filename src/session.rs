@@ -2,6 +2,7 @@ use std::time::{Duration, Instant};
 
 use actix::*;
 use actix_web_actors::ws;
+use log::*;
 
 use crate::game;
 use crate::server;
@@ -81,7 +82,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
             Ok(msg) => msg,
         };
 
-        println!("WEBSOCKET MESSAGE: {:?}", msg);
+        debug!("WEBSOCKET MESSAGE: {:?}", msg);
         match msg {
             ws::Message::Ping(msg) => {
                 self.hb = Instant::now();
@@ -99,7 +100,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                         "/list" => {
                             // Send ListRooms message to chat server and wait for
                             // response
-                            println!("List rooms");
+                            info!("List rooms");
                             self.addr
                                 .send(server::ListRooms)
                                 .into_actor(self)
@@ -110,7 +111,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                                                 ctx.text(room);
                                             }
                                         }
-                                        _ => println!("Something is wrong"),
+                                        _ => warn!("Something is wrong"),
                                     }
                                     fut::ready(())
                                 })
@@ -189,7 +190,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                     ctx.text(format!("!!! unknown command: {:?}", m))
                 }
             }
-            ws::Message::Binary(_) => println!("Unexpected binary"),
+            ws::Message::Binary(_) => warn!("Unexpected binary"),
             ws::Message::Close(_) => {
                 ctx.stop();
             }
@@ -210,7 +211,7 @@ impl WsChatSession {
             // check client heartbeats
             if Instant::now().duration_since(act.hb) > CLIENT_TIMEOUT {
                 // heartbeat timed out
-                println!("Websocket Client heartbeat failed, disconnecting!");
+                debug!("Websocket Client heartbeat failed, disconnecting!");
 
                 // notify chat server
                 act.addr.do_send(server::Disconnect { id: act.id });

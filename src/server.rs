@@ -7,6 +7,7 @@ use std::iter::Iterator;
 
 use actix::prelude::*;
 use failure::Error;
+use log::*;
 use rand::{self, rngs::ThreadRng, Rng};
 
 use crate::game::Assignment;
@@ -193,7 +194,7 @@ impl Handler<Connect> for ChatServer {
     type Result = usize;
 
     fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {
-        println!("Someone joined");
+        debug!("Someone joined");
 
         // register session with random id
         let id = self.rng.gen::<usize>();
@@ -209,7 +210,7 @@ impl Handler<Disconnect> for ChatServer {
     type Result = ();
 
     fn handle(&mut self, msg: Disconnect, _: &mut Context<Self>) {
-        println!("Someone disconnected");
+        debug!("Someone disconnected");
 
         // remove address
         if self.sessions.remove(&msg.id).is_some() {
