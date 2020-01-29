@@ -138,7 +138,9 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                             if v.len() == 2 {
                                 match v[1].parse() {
                                     Ok(size) => {
-                                        if !(5 <= size && size <= 7) {
+                                        if (size as usize) < game::LOWER_ROOM_SIZE
+                                            || (size as usize) > game::UPPER_ROOM_SIZE
+                                        {
                                             ctx.text(format!(
                                                 "!!! room size {} is not supported. it should be in range {}-{}",
                                                 size, game::LOWER_ROOM_SIZE, game::UPPER_ROOM_SIZE,
