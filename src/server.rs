@@ -80,6 +80,12 @@ pub struct Room {
     seats: Vec<(usize, String)>,
 }
 
+impl Room {
+    fn is_full(&self) -> bool {
+        return self.sessions.len() == self.size as usize;
+    }
+}
+
 impl Default for ChatServer {
     fn default() -> ChatServer {
         // default room
@@ -95,7 +101,7 @@ impl Default for ChatServer {
 
 impl ChatServer {
     /// Send message to all users in the room
-    fn send_message(&self, room: &str, message: &str, skip_id: usize) {
+    fn broadcast_message(&self, room: &str, message: &str, skip_id: usize) {
         if let Some(Room { sessions, .. }) = self.rooms.get(room) {
             for id in sessions {
                 if *id != skip_id {
@@ -163,7 +169,7 @@ impl ChatServer {
         }
         // send message to other users
         for room in removed_rooms {
-            self.send_message(&room, "Someone disconnected", 0);
+            self.broadcast_message(&room, "Someone disconnected", 0);
         }
     }
 
@@ -245,6 +251,7 @@ impl Handler<Join> for ChatServer {
             session_name,
             name,
         } = msg;
+
         if !self.rooms.contains_key(&name) {
             self.send_message_to_user(id, format!("!!! room not exist"));
             return;
@@ -252,33 +259,32 @@ impl Handler<Join> for ChatServer {
 
         self.remove_user_from_all_rooms(id);
 
-        let is_full_status = self.rooms.get_mut(&name).map(
-            |Room {
-                 ref mut sessions,
-                 size,
-                 ref mut seats,
-             }| {
-                sessions.insert(id);
+        let is_full = match self.rooms.get_mut(&name) {
+            Some(room) => {
+                room.sessions.insert(id);
                 // FIXME: check duplicated name
-                seats.push((id, session_name));
+                room.seats.push((id, session_name.clone()));
 
-                sessions.len() == *size as usize
-            },
-        );
-
-        if let Some(is_full) = is_full_status {
-            self.send_message(&name, "Someone connected", id);
-            self.send_message_to_user(id, format!("joined"));
-            if is_full {
-                self.send_message(&name, "人已经凑齐", 0);
-                if let Err(err) = self.assign_and_notify(&name) {
-                    self.send_message(&name, &format!("分配失败：{}", err), 0);
-                }
-                self.rooms.remove(&name);
+                room.is_full()
             }
-            return;
+            None => {
+                self.send_message_to_user(
+                    id,
+                    format!("!!! room not exist, may be deleted just now"),
+                );
+                return;
+            }
+        };
+
+        self.broadcast_message(&name, &format!("{} connected", &session_name), id);
+        self.send_message_to_user(id, format!("joined"));
+        if is_full {
+            self.broadcast_message(&name, "人已经凑齐", 0);
+            if let Err(err) = self.assign_and_notify(&name) {
+                self.broadcast_message(&name, &format!("分配失败：{}", err), 0);
+            }
+            self.rooms.remove(&name);
         }
-        self.send_message_to_user(id, format!("!!! room not exist, may be deleted just now"));
     }
 }
 
@@ -304,10 +310,7 @@ impl Handler<Create> for ChatServer {
         self.remove_user_from_all_rooms(id);
 
         self.send_message_to_user(id, format!("room {} created.", &name));
-        self.send_message_to_user(
-            id,
-            "please share the room number to your friends".to_owned(),
-        );
+        self.send_message_to_user(id, "请把房间号告诉你的小伙伴们".to_owned());
         let mut sessions = BTreeSet::new();
         sessions.insert(id);
         let seats = vec![(id, session_name)];
