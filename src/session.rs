@@ -120,54 +120,69 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                             // of rooms back
                         }
                         "/join" => {
-                            if v.len() == 2 {
-                                if let Some(ref session_name) = self.name {
+                            match (self.name.as_ref(), &v[1..]) {
+                                (Some(session_name), [name]) => {
                                     self.addr.do_send(server::Join {
                                         id: self.id,
-                                        name: v[1].to_owned().clone(),
+                                        name: name.to_string(),
                                         session_name: session_name.clone(),
                                     });
-                                } else {
+                                }
+                                (None, _) => {
                                     ctx.text("!!! session name is required");
                                 }
-                            } else {
-                                ctx.text("!!! room name is required");
-                            }
+                                (Some(_), []) => {
+                                    ctx.text("!!! room name is required");
+                                }
+                                _ => {
+                                    ctx.text("!!! unknown command");
+                                }
+                            };
                         }
                         "/create" => {
-                            if v.len() == 2 {
-                                match v[1].parse() {
-                                    Ok(size) => {
-                                        if (size as usize) < game::LOWER_ROOM_SIZE
-                                            || (size as usize) > game::UPPER_ROOM_SIZE
+                            match (self.name.as_ref(), &v[1..]) {
+                                (Some(session_name), [size]) => {
+                                    if let Ok(size) = size.parse::<u8>() {
+                                        if (size as usize) >= game::LOWER_ROOM_SIZE
+                                            && (size as usize) <= game::UPPER_ROOM_SIZE
                                         {
-                                            ctx.text(format!(
-                                                "!!! room size {} is not supported. it should be in range {}-{}",
-                                                size, game::LOWER_ROOM_SIZE, game::UPPER_ROOM_SIZE,
-                                            ))
-                                        } else if let Some(ref session_name) = self.name {
                                             self.addr.do_send(server::Create {
                                                 id: self.id,
                                                 size,
                                                 session_name: session_name.clone(),
-                                            })
+                                            });
                                         } else {
-                                            ctx.text("!!! session name is required");
+                                            ctx.text(format!(
+                                                "!!! room size {} is not supported. it should be in range {}-{}",
+                                                size, game::LOWER_ROOM_SIZE, game::UPPER_ROOM_SIZE,
+                                            ));
                                         }
+                                    } else {
+                                        ctx.text(format!("!!! invalid room size: {}", size));
                                     }
-                                    Err(_) => ctx.text(format!("!!! invalid room size: {}", v[1])),
-                                };
-                            } else {
-                                ctx.text("!!! size is required");
-                            }
+                                }
+                                (None, _) => {
+                                    ctx.text("!!! session name is required");
+                                }
+                                (Some(_), []) => {
+                                    ctx.text("!!! size is required");
+                                }
+                                _ => {
+                                    ctx.text("!!! unknown command");
+                                }
+                            };
                         }
-                        "/name" => {
-                            if v.len() == 2 {
-                                self.name = Some(v[1].to_owned());
-                            } else {
+                        "/name" => match &v[1..] {
+                            [name] => {
+                                self.name = Some(name.to_string());
+                            }
+                            [] => {
                                 ctx.text("!!! name is required");
                             }
-                        }
+                            _ => {
+                                ctx.text("!!! unknown command");
+                            }
+                        },
                         _ => ctx.text(format!("!!! unknown command: {:?}", m)),
                     }
                 } else {
