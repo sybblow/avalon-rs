@@ -142,25 +142,30 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                         }
                         "/create" => {
                             match (self.name.as_ref(), &v[1..]) {
-                                (Some(session_name), [size]) => {
-                                    if let Ok(size) = size.parse::<u8>() {
-                                        if (size as usize) >= game::LOWER_ROOM_SIZE
-                                            && (size as usize) <= game::UPPER_ROOM_SIZE
-                                        {
+                                (Some(session_name), [size_arg]) => {
+                                    match size_arg.parse::<usize>() {
+                                        Ok(
+                                            size @ game::LOWER_ROOM_SIZE..=game::UPPER_ROOM_SIZE,
+                                        ) => {
                                             self.addr.do_send(server::Create {
                                                 id: self.id,
-                                                size,
+                                                size: size as u8,
                                                 session_name: session_name.clone(),
                                             });
-                                        } else {
+                                        }
+                                        Ok(size) => {
                                             ctx.text(format!(
                                                 "!!! room size {} is not supported. it should be in range {}-{}",
                                                 size, game::LOWER_ROOM_SIZE, game::UPPER_ROOM_SIZE,
                                             ));
                                         }
-                                    } else {
-                                        ctx.text(format!("!!! invalid room size: {}", size));
-                                    }
+                                        _ => {
+                                            ctx.text(format!(
+                                                "!!! invalid room size: {}",
+                                                size_arg
+                                            ));
+                                        }
+                                    };
                                 }
                                 (None, _) => {
                                     ctx.text("!!! session name is required");

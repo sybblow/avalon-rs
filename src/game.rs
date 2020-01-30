@@ -119,7 +119,7 @@ impl Assignment {
     pub fn get_player(&self, index: usize) -> Option<(&str, Role)> {
         self.players
             .get(index)
-            .map(|(name, role)| (name.as_ref(), *role))
+            .map(|&(ref name, role)| (name.as_ref(), role))
     }
 
     pub fn see_from_role(&self, role: Role) -> SeeingBy {
@@ -150,8 +150,8 @@ impl Assignment {
         self.players
             .iter()
             .enumerate()
-            .filter_map(|(id, (name, role))| {
-                if f(*role) {
+            .filter_map(|(id, &(ref name, role))| {
+                if f(role) {
                     Some((id, name.clone()))
                 } else {
                     None
@@ -161,10 +161,10 @@ impl Assignment {
     }
 }
 
-pub static LOWER_ROOM_SIZE: usize = 5;
-pub static UPPER_ROOM_SIZE: usize = 10;
+pub const LOWER_ROOM_SIZE: usize = 5;
+pub const UPPER_ROOM_SIZE: usize = ROLES.len();
 
-static ROLES: &'static [Role] = &[
+const ROLES: &'static [Role] = &[
     Merlin, Assassin, Percival, Morgana, Loyal, Loyal, Oberon, Loyal, Loyal, Mordred,
 ];
 
@@ -192,10 +192,5 @@ mod tests {
             "hello world".to_owned(),
             join(vec!["hello".to_owned(), "world".to_owned()].iter(), " "),
         );
-    }
-
-    #[test]
-    fn test_role_number() {
-        assert_eq!(UPPER_ROOM_SIZE, ROLES.len());
     }
 }
