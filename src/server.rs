@@ -101,13 +101,14 @@ impl Default for ChatServer {
 
 impl ChatServer {
     /// Send message to all users in the room
-    fn broadcast_message(&self, room: &str, message: &str, skip_id: usize) {
+    fn broadcast_message(&self, room: &str, message: &str, skip_id: Option<usize>) {
         if let Some(Room { sessions, .. }) = self.rooms.get(room) {
-            for id in sessions {
-                if *id != skip_id {
-                    if let Some(addr) = self.sessions.get(id) {
-                        let _ = addr.do_send(Message(message.to_owned()));
-                    }
+            for &id in sessions {
+                if skip_id == Some(id) {
+                    continue;
+                }
+                if let Some(addr) = self.sessions.get(&id) {
+                    let _ = addr.do_send(Message(message.to_owned()));
                 }
             }
         }
@@ -169,7 +170,7 @@ impl ChatServer {
         }
         // send message to other users
         for room in removed_rooms {
-            self.broadcast_message(&room, "Someone disconnected", 0);
+            self.broadcast_message(&room, "Someone disconnected", None);
         }
     }
 
@@ -276,12 +277,12 @@ impl Handler<Join> for ChatServer {
             }
         };
 
-        self.broadcast_message(&name, &format!("{} connected", &session_name), id);
+        self.broadcast_message(&name, &format!("{} connected", &session_name), Some(id));
         self.send_message_to_user(id, format!("joined"));
         if is_full {
-            self.broadcast_message(&name, "人已经凑齐", 0);
+            self.broadcast_message(&name, "人已经凑齐", None);
             if let Err(err) = self.assign_and_notify(&name) {
-                self.broadcast_message(&name, &format!("分配失败：{}", err), 0);
+                self.broadcast_message(&name, &format!("分配失败：{}", err), None);
             }
             self.rooms.remove(&name);
         }
