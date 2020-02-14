@@ -5,6 +5,8 @@ use actix_files as fs;
 use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
 use actix_web_actors::ws;
 
+use argh::FromArgs;
+
 use avalon_rs::server;
 use avalon_rs::session;
 
@@ -55,23 +57,17 @@ async fn main() -> std::io::Result<()> {
     .await
 }
 
+#[derive(FromArgs)]
+/// Web socket server as avalon dealer
+struct Opt {
+    /// sets the listen address
+    #[argh(option, short = 'a')]
+    addr: Option<String>,
+}
+
 #[inline]
 fn get_opts() -> String {
-    let matches = clap::App::new("avalon-websocket")
-        .version("0.1")
-        .author("Cao Siliang <siliang.cao@gmail.com>")
-        .about("Web socket server as avalon dealer")
-        .arg(
-            clap::Arg::with_name("address")
-                .short("a")
-                .long("addr")
-                .help("Sets the listen address")
-                .takes_value(true),
-        )
-        .get_matches();
+    let opt: Opt = argh::from_env();
 
-    matches
-        .value_of("address")
-        .unwrap_or("127.0.0.1:8080")
-        .to_string()
+    opt.addr.unwrap_or("127.0.0.1:8080".to_owned())
 }
