@@ -185,12 +185,12 @@ mod tests {
 
     #[test]
     fn test_join() {
-        let str_list: &[&str] = &["hello", "world"];
-        assert_eq!("hello world".to_owned(), join(str_list.iter(), " "));
+        let str_list = &["hello", "world"];
+        assert_eq!("hello world".to_owned(), join(str_list, " "));
 
         assert_eq!(
             "hello world".to_owned(),
-            join(vec!["hello".to_owned(), "world".to_owned()].iter(), " "),
+            join(&vec!["hello".to_owned(), "world".to_owned()], " "),
         );
     }
 }
